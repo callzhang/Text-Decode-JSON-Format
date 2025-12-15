@@ -1,7 +1,10 @@
 import sublime
 import sublime_plugin
 
-import auto_tools_core as core
+try:
+    from . import auto_tools_core as core
+except ImportError:
+    import auto_tools_core as core
 
 
 class AutoDecodeCommand(sublime_plugin.TextCommand):
@@ -30,4 +33,3 @@ class AutoJsonFormatCommand(sublime_plugin.TextCommand):
             final = core.json_pretty(safe)
 
             self.view.replace(edit, region, final)
-
