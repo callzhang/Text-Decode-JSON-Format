@@ -20,7 +20,7 @@ def looks_like_base64(s):
 
 def looks_like_hex(s):
     s = s.replace(" ", "").replace("\n", "")
-    return bool(re.match(r'^[0-9a-fA-F]+$', s)) and len(s) % 2 == 0
+    return len(s) >= 4 and bool(re.match(r'^[0-9a-fA-F]+$', s)) and len(s) % 2 == 0
 
 
 def try_decode_hex(s):
@@ -33,7 +33,7 @@ def try_decode_hex(s):
 
 def try_decode_base64(s):
     try:
-        raw = base64.b64decode(s)
+        raw = base64.b64decode(s, validate=True)
         try:
             return raw.decode("utf-8")
         except Exception:
@@ -58,7 +58,7 @@ def auto_decode_engine(text):
     prev = None
     cur = text
 
-    while cur != prev:
+    for _ in range(10):
         prev = cur
 
         if "%" in cur:
@@ -104,6 +104,9 @@ def auto_decode_engine(text):
                 else:
                     cur = tmp
 
+        if cur == prev:
+            break
+
     return cur
 
 
@@ -129,4 +132,3 @@ def json_pretty(s):
         return json.dumps(obj, ensure_ascii=False, indent=2)
     except Exception:
         return s
-
