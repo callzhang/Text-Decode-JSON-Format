@@ -1,0 +1,10 @@
+[
+    {
+        "caption": "Auto Decode (URL+HTML+Unicode+Base64+Hex)",
+        "command": "auto_decode"
+    },
+    {
+        "caption": "Auto JSON Format (Decode + Fix + Pretty)",
+        "command": "auto_json_format"
+    }
+]
