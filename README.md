@@ -8,9 +8,12 @@ Utilities for decoding messy text and formatting JSON in Sublime Text. Includes 
 ## Installation
 
 ### Package Control (recommended)
-1. Publish this repository publicly on GitHub (name it to match the package, e.g., `Text-Decode-JSON-Format` or similar).
-2. Tag a release (e.g., `v1.0.0`).
-3. Submit a PR to [`package_control_channel`](https://github.com/wbond/package_control_channel) adding the repo URL to the default channel, using the package name **Text Decode + JSON Format**. After merge, users can run `Package Control: Install Package` and search for that name.
+Once the package is in the default channel, run `Package Control: Install Package` and search for **Text Decode + JSON Format**.
+
+### Install via custom source (before channel merge)
+1. In Sublime, run `Package Control: Add Repository` and paste `https://github.com/callzhang/Text-Decode-JSON-Format`.
+2. Run `Package Control: Install Package` and search for **Text Decode + JSON Format**.
+3. Remove the custom repository later if desired via `Package Control: Remove Repository`.
 
 ### Manual install
 1. Copy `auto_tools.py`, `auto_tools_core.py`, and `auto_tools.sublime-commands` into your Sublime `Packages/User` directory.
