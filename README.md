@@ -1,11 +1,55 @@
-# Text Decode + JSON Format (Sublime Text)
+# Text Decode + JSON Format
 
-Sublime Text commands that rescue mangled payloads (URLs, HTML entities, Unicode escapes, hex/base64, even gzip’d blobs) and turn them into readable text or pretty JSON—great for API logs, scraped pages, and double-encoded data.
+Powerful tools to decode mangled payloads (URLs, HTML entities, Unicode escapes, hex/base64, even gzip'd blobs) and turn them into readable text or pretty JSON—great for API logs, scraped pages, and double-encoded data.
 
-- **Auto Decode**: Iteratively unwrap URL, HTML, Unicode escape sequences, hex, base64, and gzip.
-- **Auto JSON Format**: Runs Auto Decode, fixes string literal escapes, then pretty-prints JSON with non‑ASCII preserved.
+Available as:
+- **Sublime Text Plugin**: Commands for quick decoding in your editor
+- **Web Interface**: Interactive browser-based decoder with syntax highlighting
 
-## Installation
+## Features
+
+- **Auto Decode**: Iteratively unwrap URL, HTML, Unicode escape sequences, hex, base64, and gzip
+- **Auto JSON Format**: Runs Auto Decode, fixes string literal escapes, then pretty-prints JSON with non‑ASCII preserved
+- **Syntax Highlighting**: Automatic language detection and highlighting for JSON, HTML, Markdown, JavaScript, CSS, Python, and more
+- **Undo/Redo**: Full history management for your decoding operations
+- **Copy to Clipboard**: One-click copy of decoded results
+
+## Web Interface
+
+A modern, interactive web interface is available in the `vercel/` directory.
+
+### Local Development
+
+```bash
+cd vercel
+python3 -m http.server 8000
+# Open http://localhost:8000 in your browser
+```
+
+### Deploy to Vercel
+
+```bash
+cd vercel
+vercel
+```
+
+The web interface includes:
+- **Interactive decoder** with input/output textareas
+- **Syntax highlighting** with automatic language detection
+- **Process button** to decode text
+- **Format as JSON** button to format and prettify JSON
+- **Undo/Redo** buttons for history navigation
+- **Copy Output** button for quick clipboard access
+- **Keyboard shortcuts**: `Ctrl/Cmd+Enter` to process, `Ctrl/Cmd+Z` for undo
+
+### Features
+
+- Real-time syntax highlighting for JSON, HTML, Markdown, JavaScript, CSS, Python, Bash
+- Language badge showing detected format
+- Dark theme optimized for readability
+- Responsive design for mobile and desktop
+
+## Sublime Text Plugin Installation
 
 ### Local Installation Script (easiest)
 
@@ -86,13 +130,59 @@ Input: `%7B%22msg%22%3A%22%E4%BD%A0%E5%A5%BD%5Cnline2%22%2C%22value%22%3A123%7D`
 - JSON sanitizer: normalizes `\r\n`/`\r` to `\n` inside strings so pretty-print stays valid.
 
 ## Development
-- Run tests: `python -m pytest` (or `python -m unittest`)
-- Key files:
-  - `auto_tools_core.py`: decoding + JSON utilities (pure Python, unit tests)
-  - `auto_tools.py`: Sublime command bindings
-  - `auto_tools.sublime-commands`: palette entries
 
-## Release log
-- **v1.0.2**: Safer Unicode escape handling (prevents mojibake) and additional coverage.
-- **v1.0.1**: Install docs update.
-- **v1.0.0**: Initial release.
+### Running Tests
+
+```bash
+python -m unittest
+# or
+python -m pytest
+```
+
+### Project Structure
+
+```
+.
+├── auto_tools_core.py          # Core decoding + JSON utilities (pure Python, unit tested)
+├── auto_tools.py               # Sublime Text command bindings
+├── auto_tools.sublime-commands # Sublime Text command palette entries
+├── install.sh                  # Installation script for macOS/Linux
+├── tests/                      # Unit tests
+│   ├── test_auto_tools_core.py
+│   └── text.txt                # Test data
+└── vercel/                     # Web interface
+    ├── index.html              # Interactive web decoder
+    └── vercel.json             # Vercel deployment config
+```
+
+### Key Files
+
+- **`auto_tools_core.py`**: Core decoding engine and JSON utilities (pure Python, fully tested)
+- **`auto_tools.py`**: Sublime Text command bindings
+- **`auto_tools.sublime-commands`**: Command palette entries
+- **`vercel/index.html`**: Web interface with syntax highlighting and interactive features
+
+## Technical Details
+
+### Supported Encodings
+
+- **URL Encoding**: `%E4%BD%A0%E5%A5%BD` → `你好`
+- **HTML Entities**: `&amp;`, `&lt;`, `&gt;`, `&quot;`, `&#xXXXX;`, `&#DDDD;`
+- **Unicode Escapes**: `\uXXXX`, `\UXXXXXXXX`, `\xXX`
+- **Hex Encoding**: Detects and decodes hex strings
+- **Base64**: Detects and decodes base64 strings
+- **Gzip**: Automatically decompresses base64-encoded gzip blobs
+
+### JSON Handling
+
+- **Sanitization**: Fixes unescaped newlines in JSON strings (`\r\n` → `\n`)
+- **Pretty Printing**: Formats JSON with 2-space indentation
+- **Non-ASCII Preservation**: Chinese, emoji, and other Unicode characters are preserved
+- **Embedded JSON Extraction**: Automatically extracts JSON from HTML/text
+
+## Release Log
+
+- **v1.1.0**: Added web interface with syntax highlighting, undo/redo, and copy functionality
+- **v1.0.2**: Safer Unicode escape handling (prevents mojibake) and additional coverage
+- **v1.0.1**: Install docs update
+- **v1.0.0**: Initial release

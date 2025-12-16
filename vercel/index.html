@@ -1,0 +1,925 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Text Decode + JSON Format</title>
+  <!-- Prism.js for syntax highlighting -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-clike.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-css.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markdown.min.js"></script>
+  <!-- Pako.js for gzip decompression -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+  <script>
+    // Ensure Prism is available and languages are loaded
+    window.Prism = window.Prism || {};
+    Prism.languages = Prism.languages || {};
+  </script>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #111827;
+      --accent: #22d3ee;
+      --muted: #9ca3af;
+      --text: #e5e7eb;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: radial-gradient(circle at 20% 20%, rgba(34,211,238,0.08), transparent 35%),
+                  radial-gradient(circle at 80% 10%, rgba(59,130,246,0.12), transparent 38%),
+                  var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    header {
+      padding: 48px 20px 24px;
+      text-align: center;
+    }
+    h1 {
+      margin: 0;
+      font-size: 2.4rem;
+      letter-spacing: -0.5px;
+    }
+    p.lead {
+      max-width: 760px;
+      margin: 12px auto 0;
+      color: var(--muted);
+      font-size: 1.05rem;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px 20px 48px;
+      width: 100%;
+      box-sizing: border-box;
+      overflow-x: hidden;
+    }
+    .decoder-section {
+      background: linear-gradient(145deg, rgba(17,24,39,0.95), rgba(15,23,42,0.92));
+      border: 1px solid rgba(255,255,255,0.04);
+      border-radius: 14px;
+      padding: 24px;
+      margin-bottom: 32px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+      width: 100%;
+      box-sizing: border-box;
+      overflow-x: hidden;
+    }
+    .decoder-section h2 {
+      margin: 0 0 20px;
+      font-size: 1.4rem;
+      color: var(--accent);
+    }
+    .textarea-group {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 0;
+      margin-bottom: 16px;
+      width: 100%;
+      box-sizing: border-box;
+      position: relative;
+    }
+    .textarea-group > div:first-child {
+      width: 100%;
+      min-width: 0;
+      box-sizing: border-box;
+      transition: width 0.3s ease, opacity 0.3s ease;
+    }
+    .textarea-group > div:last-child {
+      width: 100%;
+      min-width: 0;
+      box-sizing: border-box;
+    }
+    .textarea-group.input-hidden > div:first-child {
+      width: 0;
+      opacity: 0;
+      overflow: hidden;
+      padding: 0;
+      margin: 0;
+    }
+    .textarea-group.input-hidden {
+      grid-template-columns: 0 auto 1fr;
+    }
+    .divider {
+      width: 4px;
+      background: rgba(255,255,255,0.1);
+      cursor: pointer;
+      position: relative;
+      margin: 0 8px;
+      border-radius: 2px;
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+    .divider:hover {
+      background: var(--accent);
+    }
+    @media (max-width: 768px) {
+      .textarea-group {
+        grid-template-columns: 1fr;
+      }
+      .textarea-group .divider {
+        display: none;
+      }
+      .textarea-group.input-hidden {
+        grid-template-columns: 1fr;
+      }
+    }
+    textarea {
+      width: 100%;
+      min-height: 300px;
+      max-height: 600px;
+      font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      padding: 12px;
+      color: #e0f2fe;
+      font-size: 14px;
+      resize: vertical;
+      box-sizing: border-box;
+      overflow-y: auto;
+      -webkit-user-select: text;
+      -moz-user-select: text;
+      -ms-user-select: text;
+      user-select: text;
+    }
+    textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(34,211,238,0.1);
+    }
+    .output-container {
+      position: relative;
+      width: 100%;
+      min-height: 300px;
+      max-height: 600px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-width: 0;
+    }
+    .copy-icon-btn {
+      position: absolute;
+      bottom: 12px;
+      right: 12px;
+      width: 32px;
+      height: 32px;
+      background: rgba(34,211,238,0.2);
+      border: 1px solid rgba(34,211,238,0.3);
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      z-index: 10;
+      color: var(--accent);
+      padding: 0;
+    }
+    .copy-icon-btn:hover {
+      background: rgba(34,211,238,0.3);
+      border-color: var(--accent);
+      transform: scale(1.1);
+    }
+    .copy-icon-btn:active {
+      transform: scale(0.95);
+    }
+    .copy-icon-btn svg {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .output-highlight {
+      width: 100%;
+      min-height: 300px;
+      max-height: 600px;
+      font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      padding: 12px;
+      font-size: 14px;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      box-sizing: border-box;
+      flex: 1;
+      max-width: 100%;
+      overflow-x: auto;
+      overflow-y: auto;
+      min-width: 0;
+    }
+    .output-highlight pre {
+      margin: 0;
+      background: transparent;
+      padding: 0;
+      font-size: 14px;
+      line-height: 1.5;
+      max-width: 100%;
+      overflow-wrap: break-word;
+      word-wrap: break-word;
+      white-space: pre-wrap;
+      width: 100%;
+      box-sizing: border-box;
+      min-width: 0;
+      overflow: visible;
+    }
+    .output-highlight code {
+      font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+      font-size: 14px;
+      word-break: break-word;
+      overflow-wrap: break-word;
+      white-space: pre-wrap;
+      max-width: 100%;
+      display: block;
+      width: 100%;
+      box-sizing: border-box;
+      min-width: 0;
+      margin: 0;
+      padding: 0;
+    }
+    .language-badge {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: rgba(34,211,238,0.2);
+      color: var(--accent);
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 500;
+      text-transform: uppercase;
+      z-index: 10;
+    }
+    .button-group {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: #0f172a;
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: #06b6d4;
+      transform: translateY(-1px);
+    }
+    .btn-secondary {
+      background: rgba(255,255,255,0.1);
+      color: var(--text);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .btn-secondary:hover:not(:disabled) {
+      background: rgba(255,255,255,0.15);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+    .card {
+      background: linear-gradient(145deg, rgba(17,24,39,0.95), rgba(15,23,42,0.92));
+      border: 1px solid rgba(255,255,255,0.04);
+      border-radius: 14px;
+      padding: 18px 18px 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+    }
+    .card h3 {
+      margin: 0 0 8px;
+      font-size: 1.08rem;
+      color: var(--accent);
+    }
+    .mono {
+      font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+      background: rgba(255,255,255,0.04);
+      border-radius: 10px;
+      padding: 12px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      margin: 8px 0 0;
+      color: #e0f2fe;
+    }
+    .mono pre {
+      margin: 0;
+      padding: 0;
+      background: transparent;
+      font-family: inherit;
+    }
+    .mono code {
+      font-family: inherit;
+      font-size: inherit;
+      color: inherit;
+    }
+    footer {
+      text-align: center;
+      padding: 20px;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+    footer p {
+      margin: 8px 0;
+    }
+    a {
+      color: var(--accent);
+      text-decoration: none;
+      transition: opacity 0.2s;
+    }
+    a:hover {
+      opacity: 0.8;
+    }
+    label {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Text Decode + JSON Format</h1>
+    <p class="lead">Unwrap URL encoding, HTML entities, Unicode escapes, hex/base64, and even gzip'd blobs. Then sanitize and pretty-print JSON with non‑ASCII preserved — perfect for debugging API payloads and scraped data.</p>
+  </header>
+
+  <div class="container">
+    <div class="decoder-section">
+      <h2>Interactive Decoder</h2>
+      <div class="textarea-group" id="textareaGroup">
+        <div>
+          <label for="input">Input (encoded text)</label>
+          <textarea id="input" placeholder="Paste your encoded text here...&#10;Example: %E4%BD%A0%E5%A5%BD or \\u4e2d\\u6587"></textarea>
+        </div>
+        <div class="divider" id="divider" title="Click to toggle input box"></div>
+        <div>
+          <label for="output">Output (decoded text)</label>
+          <div class="output-container">
+            <span class="language-badge" id="languageBadge" style="display: none;"></span>
+            <div class="output-highlight" id="outputHighlight">
+              <pre><code class="language-plaintext"></code></pre>
+            </div>
+            <button class="copy-icon-btn" id="copyIconBtn" title="Copy output" type="button">
+              <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke="currentColor" fill="none" stroke-width="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" fill="none" stroke-width="2"/>
+              </svg>
+            </button>
+          </div>
+          <textarea id="output" readonly style="display: none;" aria-hidden="true"></textarea>
+        </div>
+      </div>
+      <div class="button-group">
+        <button id="processBtn" class="btn-primary">Decode</button>
+        <button id="undoBtn" class="btn-secondary" disabled>Undo</button>
+        <button id="redoBtn" class="btn-secondary" disabled>Redo</button>
+        <button id="formatJsonBtn" class="btn-secondary">Format as JSON</button>
+        <button id="clearBtn" class="btn-secondary">Clear</button>
+      </div>
+    </div>
+
+    <section class="grid">
+      <div class="card">
+        <h3>URL-encoded Chinese</h3>
+        <div class="mono">%E4%BD%A0%E5%A5%BD</div>
+        <div class="mono">你好</div>
+      </div>
+      <div class="card">
+        <h3>HTML entities</h3>
+        <div class="mono">foo&amp;amp;bar</div>
+        <div class="mono">foo&bar</div>
+      </div>
+      <div class="card">
+        <h3>Base64 + gzip JSON</h3>
+        <div class="mono">H4sIANV/QGkC/6tWyi1OV7JSUHqyd8HTpXuVdBSUyhJzSlOBQoZGxrUA9XjiTx8AAAA=</div>
+        <div class="mono"><pre><code class="language-json">{"msg": "你好", "value": 123}</code></pre></div>
+      </div>
+      <div class="card">
+        <h3>Mixed literal + escapes</h3>
+        <div class="mono">彭斯诚 \\u5df2\\u4fdd\\u5b58</div>
+        <div class="mono">彭斯诚 已保存</div>
+      </div>
+      <div class="card">
+        <h3>Pretty JSON output</h3>
+        <div class="mono"><pre><code class="language-json">{
+  "msg": "你好\nline2",
+  "value": 123
+}</code></pre></div>
+      </div>
+      <div class="card">
+        <h3>Markdown formatting</h3>
+        <div class="mono"><pre><code class="language-markdown"># Title
+## Subtitle
+
+- List item 1
+- List item 2
+
+**Bold text** and *italic text*
+
+```code```</code></pre></div>
+      </div>
+    </section>
+  </div>
+
+  <footer>
+    <p>Built from the Sublime Text utility. View source locally in <code>vercel/</code> and deploy via <code>vercel</code>.</p>
+    <p style="margin-top: 12px;">
+      <a href="https://github.com/callzhang/Text-Decode-JSON-Format" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle;">
+          <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+        </svg>
+        Contribute on GitHub
+      </a>
+    </p>
+  </footer>
+
+  <script>
+    // Wait for DOM to be ready
+    document.addEventListener('DOMContentLoaded', function() {
+      initApp();
+    });
+
+    function initApp() {
+      // History management
+      let history = [];
+      let historyIndex = -1;
+
+      const inputEl = document.getElementById('input');
+      const outputEl = document.getElementById('output');
+      const outputHighlight = document.getElementById('outputHighlight');
+      const languageBadge = document.getElementById('languageBadge');
+      const processBtn = document.getElementById('processBtn');
+      const undoBtn = document.getElementById('undoBtn');
+      const redoBtn = document.getElementById('redoBtn');
+      const formatJsonBtn = document.getElementById('formatJsonBtn');
+      const copyIconBtn = document.getElementById('copyIconBtn');
+      const clearBtn = document.getElementById('clearBtn');
+      const divider = document.getElementById('divider');
+      const textareaGroup = document.getElementById('textareaGroup');
+
+      // Check if all elements exist
+      if (!inputEl || !outputEl || !outputHighlight || !processBtn || !formatJsonBtn) {
+        console.error('Required elements not found');
+        return;
+      }
+
+      // Detect language from content
+      function detectLanguage(text) {
+        if (!text.trim()) return 'plaintext';
+        
+        // Try to parse as JSON
+        try {
+          JSON.parse(text.trim());
+          return 'json';
+        } catch (e) {
+          // Not valid JSON, continue checking
+        }
+        
+        // Check for HTML
+        if (/<[a-z][\s\S]*>/i.test(text)) {
+          return 'html';
+        }
+        
+        // Check for XML
+        if (/<\?xml[\s\S]*\?>/i.test(text)) {
+          return 'xml';
+        }
+        
+        // Check for Markdown patterns
+        if (/^#{1,6}\s|^\*+\s|^-\s|^\d+\.\s|^```|^\|.*\|/m.test(text)) {
+          return 'markdown';
+        }
+        
+        // Check for JavaScript
+        if (/function\s+\w+|const\s+\w+\s*=|let\s+\w+\s*=|var\s+\w+\s*=|=>/g.test(text)) {
+          return 'javascript';
+        }
+        
+        // Check for CSS
+        if (/\{[^}]*:[^}]*\}/.test(text) && /[a-z-]+\s*:\s*[^;]+;/.test(text)) {
+          return 'css';
+        }
+        
+        // Check for Python
+        if (/def\s+\w+|import\s+\w+|from\s+\w+\s+import|print\(/.test(text)) {
+          return 'python';
+        }
+        
+        // Check for shell script
+        if (/^#!\/.*sh|^\$\s|^#\s/.test(text)) {
+          return 'bash';
+        }
+        
+        return 'plaintext';
+      }
+
+      // Update syntax highlighted output
+      function updateOutput(text) {
+        outputEl.value = text;
+        
+        if (!text || !text.trim()) {
+          outputHighlight.innerHTML = '<pre><code class="language-plaintext"></code></pre>';
+          languageBadge.style.display = 'none';
+          return;
+        }
+        
+        const language = detectLanguage(text);
+        const escaped = text
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+        
+        outputHighlight.innerHTML = `<pre><code class="language-${language}">${escaped}</code></pre>`;
+        
+        // Show language badge
+        if (language !== 'plaintext') {
+          languageBadge.textContent = language;
+          languageBadge.style.display = 'block';
+        } else {
+          languageBadge.style.display = 'none';
+        }
+        
+        // Highlight with Prism
+        const codeElement = outputHighlight.querySelector('code');
+        if (window.Prism && codeElement) {
+          try {
+            // Use Prism.highlight instead of highlightElement to avoid plugin issues
+            const highlighted = Prism.highlight(text, Prism.languages[language] || Prism.languages.plaintext, language);
+            codeElement.innerHTML = highlighted;
+          } catch (e) {
+            console.warn('Prism highlighting failed:', e);
+            // Fallback: just show the text without highlighting
+          }
+        }
+      }
+
+      // Helper functions
+        function looksLikeBase64(s) {
+        s = s.trim().replace(/\n/g, '');
+        return /^[A-Za-z0-9+/=]+$/.test(s) && s.length % 4 === 0;
+      }
+
+      function looksLikeHex(s) {
+        s = s.replace(/[\s\n]/g, '');
+        return s.length >= 4 && /^[0-9a-fA-F]+$/.test(s) && s.length % 2 === 0;
+      }
+
+        function tryDecodeHex(s) {
+        try {
+          const hex = s.replace(/[\s\n]/g, '');
+          let result = '';
+          for (let i = 0; i < hex.length; i += 2) {
+            result += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
+          }
+          return decodeURIComponent(escape(result));
+        } catch (e) {
+          return s;
+        }
+      }
+
+      function tryDecodeGzip(data) {
+        try {
+          if (typeof pako !== 'undefined') {
+            const decompressed = pako.inflate(data, { to: 'string' });
+            return decompressed;
+          }
+        } catch (e) {
+          // Not gzip or decompression failed
+        }
+        return null;
+      }
+
+      function tryDecodeBase64(s) {
+        try {
+          const binary = atob(s.trim().replace(/\n/g, ''));
+          const bytes = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i++) {
+            bytes[i] = binary.charCodeAt(i);
+          }
+          
+          // Try gzip decompression first
+          const gzipResult = tryDecodeGzip(bytes);
+          if (gzipResult) {
+            return gzipResult;
+          }
+          
+          // If not gzip, try UTF-8 decode
+          let result = '';
+          for (let i = 0; i < binary.length; i++) {
+            result += String.fromCharCode(binary.charCodeAt(i));
+          }
+          try {
+            return decodeURIComponent(escape(result));
+          } catch (e) {
+            return result;
+          }
+        } catch (e) {
+          return s;
+        }
+      }
+
+      // Decode unicode escape sequences (like Python's unicode_escape)
+      // This handles \uXXXX, \UXXXXXXXX, \xXX, and standard escapes
+      function decodeUnicodeEscape(text) {
+      let result = text;
+      let changed = true;
+      
+      // Process in multiple passes to handle double-escaped sequences (\\u -> \u -> char)
+      while (changed) {
+        const before = result;
+        result = result.replace(/\\(u[0-9a-fA-F]{4}|U[0-9a-fA-F]{8}|x[0-9a-fA-F]{2}|[nrtfb"\\])/gi, (match) => {
+          if (match[1].toLowerCase() === 'u') {
+            // \uXXXX
+            return String.fromCharCode(parseInt(match.slice(2), 16));
+          } else if (match[1] === 'U') {
+            // \UXXXXXXXX
+            const code = parseInt(match.slice(2), 16);
+            if (code > 0xFFFF) {
+              // Surrogate pair for codes > 0xFFFF
+              const hi = Math.floor((code - 0x10000) / 0x400) + 0xD800;
+              const lo = ((code - 0x10000) % 0x400) + 0xDC00;
+              return String.fromCharCode(hi, lo);
+            }
+            return String.fromCharCode(code);
+          } else if (match[1].toLowerCase() === 'x') {
+            // \xXX
+            return String.fromCharCode(parseInt(match.slice(2), 16));
+          } else {
+            // Standard escapes: \n, \r, \t, \f, \b, \", \\
+            const escapes = { 'n': '\n', 'r': '\r', 't': '\t', 'f': '\f', 'b': '\b', '"': '"', '\\': '\\' };
+            return escapes[match[1]] || match;
+          }
+        });
+        changed = (result !== before);
+      }
+      
+        return result;
+      }
+
+      // Main decode engine
+      function autoDecodeEngine(text) {
+      let prev = null;
+      let cur = text;
+
+      for (let i = 0; i < 10; i++) {
+        prev = cur;
+
+        // Decode Unicode escapes (like Python's codecs.decode with unicode_escape)
+        if (cur.includes('\\u') || cur.includes('\\n') || cur.includes('\\t') || cur.includes('\\x')) {
+          const decoded = decodeUnicodeEscape(cur);
+          if (decoded !== cur) {
+            cur = decoded;
+          }
+        }
+
+        // URL decode
+        if (cur.includes('%')) {
+          try {
+            const tmp = decodeURIComponent(cur);
+            if (tmp !== cur) cur = tmp;
+          } catch (e) {
+            // Try partial decode
+            try {
+              cur = cur.replace(/%[0-9A-F]{2}/gi, (match) => {
+                try {
+                  return decodeURIComponent(match);
+                } catch {
+                  return match;
+                }
+              });
+            } catch (e2) {}
+          }
+        }
+
+        // HTML entities
+        if (cur.includes('&')) {
+          const tmp = cur
+            .replace(/&amp;/g, '&')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&quot;/g, '"')
+            .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+            .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)));
+          if (tmp !== cur) cur = tmp;
+        }
+
+        const stripped = cur.trim();
+
+        // Hex decode
+        if (looksLikeHex(stripped)) {
+          const tmp = tryDecodeHex(stripped);
+          if (tmp !== stripped) cur = tmp;
+        }
+
+        // Base64 decode
+        if (looksLikeBase64(stripped)) {
+          const tmp = tryDecodeBase64(stripped);
+          if (tmp !== stripped) cur = tmp;
+        }
+
+        if (cur === prev) break;
+      }
+
+        return cur;
+      }
+
+      // Extract JSON from text (finds JSON object in text)
+      function extractJson(text) {
+      const start = text.indexOf('{');
+      if (start === -1) return null;
+      
+      let braceCount = 0;
+      for (let i = start; i < text.length; i++) {
+        if (text[i] === '{') braceCount++;
+        else if (text[i] === '}') {
+          braceCount--;
+          if (braceCount === 0) {
+            return text.substring(start, i + 1);
+          }
+        }
+      }
+        return null;
+      }
+
+      // JSON sanitize
+      function jsonSanitize(s) {
+      return s.replace(/"([^"\\]*(?:\\.[^"\\]*)*)"/g, (match, inner) => {
+        inner = inner.replace(/\r\n/g, '\\n')
+                     .replace(/\r/g, '\\n')
+                     .replace(/\n/g, '\\n');
+        return '"' + inner + '"';
+        });
+      }
+
+      // JSON pretty print
+      function jsonPretty(s) {
+      // First try to extract JSON if it's embedded in text
+      let jsonStr = s.trim();
+      const extracted = extractJson(jsonStr);
+      if (extracted && extracted !== jsonStr) {
+        jsonStr = extracted;
+      }
+      
+      try {
+        const obj = JSON.parse(jsonStr);
+        return JSON.stringify(obj, null, 2);
+      } catch (e) {
+        try {
+          const sanitized = jsonSanitize(jsonStr);
+          const obj = JSON.parse(sanitized);
+          return JSON.stringify(obj, null, 2);
+        } catch (e2) {
+          return s;
+          }
+        }
+      }
+
+      // Save to history
+      function saveToHistory() {
+      const state = { input: inputEl.value, output: outputEl.value };
+      history = history.slice(0, historyIndex + 1);
+      history.push(state);
+      historyIndex = history.length - 1;
+        updateHistoryButtons();
+      }
+
+
+      // Copy output using icon button
+      function copyOutputIcon() {
+        const text = outputEl.value;
+        if (!text) return;
+        
+        navigator.clipboard.writeText(text).then(() => {
+          // Visual feedback
+          copyIconBtn.style.background = 'rgba(34,211,238,0.5)';
+          copyIconBtn.style.borderColor = 'var(--accent)';
+          setTimeout(() => {
+            copyIconBtn.style.background = '';
+            copyIconBtn.style.borderColor = '';
+          }, 1000);
+        }).catch(err => {
+          console.error('Failed to copy:', err);
+        });
+      }
+
+      // Toggle input box visibility
+      function toggleInputBox() {
+        textareaGroup.classList.toggle('input-hidden');
+      }
+
+      // Update history buttons
+      function updateHistoryButtons() {
+        undoBtn.disabled = historyIndex <= 0;
+        redoBtn.disabled = historyIndex >= history.length - 1;
+      }
+
+      // Process input
+      function process() {
+      const input = inputEl.value;
+      if (!input.trim()) return;
+
+      saveToHistory();
+      const decoded = autoDecodeEngine(input);
+        updateOutput(decoded);
+      }
+
+      // Format as JSON
+      function formatJson() {
+      // Use output if available, otherwise use input
+      let input = outputEl.value.trim() || inputEl.value.trim();
+      if (!input) return;
+
+      saveToHistory();
+      
+      // If output is empty, process input first
+      if (!outputEl.value.trim()) {
+        input = autoDecodeEngine(input);
+        updateOutput(input);
+      } else {
+        input = outputEl.value;
+      }
+      
+      const formatted = jsonPretty(input);
+        updateOutput(formatted);
+      }
+
+      // Undo
+      function undo() {
+      if (historyIndex > 0) {
+        historyIndex--;
+        const state = history[historyIndex];
+        inputEl.value = state.input;
+        updateOutput(state.output);
+          updateHistoryButtons();
+        }
+      }
+
+      // Redo
+      function redo() {
+      if (historyIndex < history.length - 1) {
+        historyIndex++;
+        const state = history[historyIndex];
+        inputEl.value = state.input;
+        updateOutput(state.output);
+          updateHistoryButtons();
+        }
+      }
+
+      // Clear
+      function clear() {
+      saveToHistory();
+      inputEl.value = '';
+        updateOutput('');
+      }
+
+      // Event listeners
+      processBtn.addEventListener('click', process);
+      formatJsonBtn.addEventListener('click', formatJson);
+      copyIconBtn.addEventListener('click', copyOutputIcon);
+      divider.addEventListener('click', toggleInputBox);
+      undoBtn.addEventListener('click', undo);
+      redoBtn.addEventListener('click', redo);
+      clearBtn.addEventListener('click', clear);
+
+
+      // Initialize history
+      saveToHistory();
+
+      // Highlight code in example cards
+      if (window.Prism) {
+        const codeBlocks = document.querySelectorAll('.card .mono code[class*="language-"]');
+        codeBlocks.forEach(code => {
+          Prism.highlightElement(code);
+        });
+      }
+    }
+  </script>
+</body>
+</html>
