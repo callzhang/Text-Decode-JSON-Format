@@ -61,6 +61,22 @@ def auto_decode_engine(text):
     for _ in range(10):
         prev = cur
 
+        # Decode explicit escape sequences without re-interpreting already
+        # decoded non-ASCII characters (which would produce mojibake).
+        if "\\u" in cur or "\\n" in cur or "\\t" in cur or "\\x" in cur:
+            def _unescape(match):
+                frag = match.group(0)
+                try:
+                    return bytes(frag, "utf-8").decode("unicode_escape")
+                except Exception:
+                    return frag
+
+            cur = re.sub(
+                r"\\u[0-9a-fA-F]{4}|\\U[0-9a-fA-F]{8}|\\x[0-9a-fA-F]{2}|\\[nrtfb\"\\]",
+                _unescape,
+                cur,
+            )
+
         if "%" in cur:
             try:
                 tmp = urllib.parse.unquote(cur)
@@ -73,14 +89,6 @@ def auto_decode_engine(text):
             tmp = html.unescape(cur)
             if tmp != cur:
                 cur = tmp
-
-        if "\\u" in cur:
-            try:
-                tmp = codecs.decode(cur, "unicode_escape")
-                if tmp != cur:
-                    cur = tmp
-            except Exception:
-                pass
 
         stripped = cur.strip()
 
@@ -116,8 +124,10 @@ def auto_decode_engine(text):
 def json_sanitize(s):
     def fix_string(m):
         inner = m.group(1)
-        inner = inner.replace("\n", "\\n")
+        # Handle \r\n as a single unit first to avoid double newline
+        inner = inner.replace("\r\n", "\\n")
         inner = inner.replace("\r", "\\n")
+        inner = inner.replace("\n", "\\n")
         return '"' + inner + '"'
 
     return re.sub(r'"([^"\\]*(?:\\.[^"\\]*)*)"', fix_string, s)

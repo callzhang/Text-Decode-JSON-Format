@@ -28,6 +28,15 @@ class AutoToolsCoreTest(unittest.TestCase):
         self.assertEqual(loaded["msg"], "line1\nline2")
         self.assertIn("\\n", sanitized)
 
+    def test_json_sanitize_handles_crlf_correctly(self):
+        # Test that \r\n is converted to single \n, not double \n
+        raw = '{"msg": "line1\r\nline2"}'
+        sanitized = core.json_sanitize(raw)
+        loaded = json.loads(sanitized)
+        self.assertEqual(loaded["msg"], "line1\nline2")
+        # Verify it's a single \n, not double
+        self.assertNotEqual(loaded["msg"], "line1\n\nline2")
+
     def test_full_pipeline_on_urlencoded_json_with_chinese_and_newline(self):
         urlencoded = "%7B%22msg%22%3A%22%E4%BD%A0%E5%A5%BD%5Cnline2%22%2C%22value%22%3A123%7D"
         decoded = core.auto_decode_engine(urlencoded)
@@ -42,6 +51,20 @@ class AutoToolsCoreTest(unittest.TestCase):
     def test_json_pretty_formats(self):
         pretty = core.json_pretty('{"a":1,"b":2}')
         self.assertEqual(pretty, '{\n  "a": 1,\n  "b": 2\n}')
+
+    def test_auto_decode_preserves_existing_unicode(self):
+        # Text already containing decoded Chinese/emoji should stay intact
+        raw = "👤 彭斯诚 架构师"
+        self.assertEqual(core.auto_decode_engine(raw), raw)
+
+    def test_auto_decode_mixed_literal_and_escapes(self):
+        # Mixed literal Chinese and escaped sequences should decode only the escapes
+        raw = "彭斯诚 \\u5df2\\u4fdd\\u5b58"
+        self.assertEqual(core.auto_decode_engine(raw), "彭斯诚 已保存")
+
+    def test_auto_decode_escaped_only_chinese(self):
+        raw = "\\u5f6d\\u65af\\u8bda"
+        self.assertEqual(core.auto_decode_engine(raw), "彭斯诚")
 
 
 if __name__ == "__main__":
