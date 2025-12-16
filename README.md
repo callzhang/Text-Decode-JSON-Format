@@ -28,10 +28,12 @@ python3 -m http.server 8000
 
 ### Deploy to Vercel
 
+Deploy from the project root:
 ```bash
-cd vercel
 vercel
 ```
+
+The root `vercel.json` is configured to serve files from the `vercel/` directory. All routes will be served by `vercel/index.html`.
 
 The web interface includes:
 - **Interactive decoder** with input/output textareas
